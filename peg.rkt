@@ -29,6 +29,7 @@
 ;;         | (* <peg>)
 ;;         | (+ <peg>)
 ;;         | (? <peg>)
+;;         | (?? <peg>)
 ;;         | (call nm) | nm
 ;;         | (name nm <peg>)
 ;;         | (! <peg>)
@@ -94,7 +95,7 @@
 
 (define-for-syntax (peg-names exp)
   (syntax-parse exp
-    #:datum-literals (epsilon char any-char range string and or * + ? call name ! drop)
+    #:datum-literals (epsilon char any-char range string and or * + ? ?? call name ! drop)
     [(and e1) (peg-names #'e1)]
     [(and e1 e2) (append (peg-names #'e1) (peg-names #'e2))]
     [(and e1 e2 . e3) (append (peg-names #'e1) (peg-names #'(and e2 . e3)))]
@@ -102,6 +103,7 @@
     [(* e1 ...) (peg-names #'(and e1 ...))]
     [(+ e1 ...) (peg-names #'(and e1 ...))]
     [(? e1 ...) (peg-names #'(and e1 ...))]
+    [(?? e1 ...) (peg-names #'(and e1 ...))]
     [(name nm subexp) (cons #'nm (peg-names #'subexp))]
     [(drop e1 ...) (peg-names #'(and e1 ...))]
     [else '()]))
@@ -116,7 +118,7 @@
                      (sk (peg-result (string x))))))))
   (with-syntax ([sk sk])
     (syntax-parse exp
-      #:datum-literals (epsilon char any-char range string and or * + ? call name ! drop $or)
+      #:datum-literals (epsilon char any-char range string and or * + ? ?? call name ! drop $or)
       [(epsilon)
        #'(sk empty-sequence)]
       [(char c)
@@ -183,6 +185,12 @@
                   p))]
       [(? e1 e2 ...)
        (peg-compile #'(? (and e1 e2 ...)) #'sk)]
+      [(?? e)
+       (with-syntax ([p (peg-compile #'e #'sk)])
+         #'(begin (pegvm-push-alternative! (lambda () (sk #f)))
+                  p))]
+      [(?? e1 e2 ...)
+       (peg-compile #'(?? (and e1 e2 ...)) #'sk)]
       [(call rule-name)
        (with-syntax ([rule (format-id #'rule-name "peg-rule:~a" #'rule-name)])
 		    #'(rule sk))]
