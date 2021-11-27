@@ -2,7 +2,7 @@
 
 (provide seq-elt seq-elt-object
          seq-cat seq-cat-subseqs
-         seq?
+         seq? seq-elt? seq-cat?
          empty-sequence empty-sequence?
          seq->dlist seq->list
          

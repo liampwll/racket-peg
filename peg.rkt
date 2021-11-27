@@ -35,6 +35,8 @@
 ;;         | (! <peg>)
 ;;         | (& <peg>)
 ;;         | (drop <peg>)
+;;         | (car <peg>)
+;;         | (cdr <peg>)
 
 
 ;;;;
@@ -118,7 +120,7 @@
                      (sk (peg-result (string x))))))))
   (with-syntax ([sk sk])
     (syntax-parse exp
-      #:datum-literals (epsilon char any-char range string and or * + ? ?? call name ! drop $or)
+      #:datum-literals (epsilon char any-char range string and or * + ? ?? call name ! drop car cdr $or)
       [(epsilon)
        #'(sk empty-sequence)]
       [(char c)
@@ -225,6 +227,19 @@
              p))]
       [(drop e1 e2 ...)
        (peg-compile #'(drop (and e1 e2 ...)) #'sk)]
+      ;; TODO: I'm pretty sure this car and cdr won't actually work with more complex rules.
+      [(car e)
+       (with-syntax ([p (peg-compile #'e #'sk^)])
+         #'(let ((sk^ (lambda (r)
+                        (sk (cond ((seq-cat? r) (car (seq->list r)))
+                                  (else (error "Can not car here" r)))))))
+             p))]
+      [(cdr e)
+       (with-syntax ([p (peg-compile #'e #'sk^)])
+         #'(let ((sk^ (lambda (r)
+                        (sk (cond ((seq-cat? r) (seq-cat (cdr (seq-cat-subseqs r))))
+                                  (else (error "Can not cdr here" r)))))))
+             p))]
       [(& e) (peg-compile #'(! (! e)) #'sk)]
       [_ (let ((shorthand (syntax-e exp)))
            (cond ((char? shorthand) (peg-compile #`(char #,exp) #'sk))
